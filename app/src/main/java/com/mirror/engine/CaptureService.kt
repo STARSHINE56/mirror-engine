@@ -36,6 +36,15 @@ class CaptureService : Service() {
         startForeground(1, buildNotification())
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val resultCode = intent?.getIntExtra("resultCode", 0) ?: 0
+        val data = intent?.getParcelableExtra<Intent>("data")
+        if (resultCode != 0 && data != null) {
+            startCapture(resultCode, data)
+        }
+        return START_NOT_STICKY
+    }
+
     fun startCapture(code: Int, data: Intent) {
         val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         mediaProjection = mpm.getMediaProjection(code, data)
@@ -70,7 +79,7 @@ class CaptureService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val ch = NotificationChannel(
                 CHANNEL_ID,
-                "投屏引擎",
+                "Mirror Engine",
                 NotificationManager.IMPORTANCE_LOW
             )
             (getSystemService(NotificationManager::class.java)).createNotificationChannel(ch)
