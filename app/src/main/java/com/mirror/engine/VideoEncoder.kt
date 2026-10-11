@@ -94,13 +94,19 @@ class VideoEncoder(
 
     private fun encodeLoop() {
         val bufferInfo = MediaCodec.BufferInfo()
+        val startCode = byteArrayOf(0x00, 0x00, 0x00, 0x01)
         while (running.get()) {
             try {
                 val outIndex = codec?.dequeueOutputBuffer(bufferInfo, 10000) ?: -1
                 if (outIndex >= 0) {
                     val buf = codec?.getOutputBuffer(outIndex) ?: continue
-                    val data = ByteArray(bufferInfo.size)
-                    buf.get(data)
+                    val rawData = ByteArray(bufferInfo.size)
+                    buf.get(rawData)
+                    // Add Annex-B start code (00 00 00 01) before each NAL unit
+                    // MediaCodec output doesn't include start codes
+                    val data = ByteArray(rawData.size + 4)
+                    System.arraycopy(startCode, 0, data, 0, 4)
+                    System.arraycopy(rawData, 0, data, 4, rawData.size)
                     while (frameQueue.size >= 2) frameQueue.poll()
                     frameQueue.offer(data)
                     codec?.releaseOutputBuffer(outIndex, false)
