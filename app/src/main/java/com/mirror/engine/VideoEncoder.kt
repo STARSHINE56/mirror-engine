@@ -54,9 +54,15 @@ class VideoEncoder(
         try {
             val server = ServerSocket(videoPort)
             Log.i(TAG, "Video waiting on $videoPort")
-            val client = server.accept()
-            Log.i(TAG, "Video connected: ${client.inetAddress}")
-            sendLoop(client)
+            while (running.get()) {
+                val client = server.accept()
+                Log.i(TAG, "Video connected: ${client.inetAddress}")
+                try {
+                    sendLoop(client)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Video send error: ${e.message}")
+                }
+            }
             server.close()
         } catch (e: Exception) {
             Log.e(TAG, "Video error: ${e.message}")
