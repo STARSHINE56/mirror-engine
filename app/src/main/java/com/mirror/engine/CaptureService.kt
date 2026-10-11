@@ -23,8 +23,6 @@ class CaptureService : Service() {
     private var virtualDisplay: VirtualDisplay? = null
     private var videoEncoder: VideoEncoder? = null
     private var controlServer: ControlServer? = null
-    private var resultCode = 0
-    private var resultData: Intent? = null
 
     companion object {
         const val CHANNEL_ID = "MirrorEngine"
@@ -36,19 +34,11 @@ class CaptureService : Service() {
         instance = this
         createNotificationChannel()
         startForeground(1, buildNotification())
-
-        val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        // 闇€瑕佷粠 Activity 浼犲叆鐨勬巿鏉冪粨鏋滐紱杩欓噷鐢ㄧ畝鍖栫増锛氱洿鎺ヨ姹?        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        startActivity(intent)
     }
 
     fun startCapture(code: Int, data: Intent) {
-        resultCode = code
-        resultData = data
         val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        mediaProjection = mpm.getMediaProjection(resultCode, resultData!!)
+        mediaProjection = mpm.getMediaProjection(code, data)
 
         val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val metrics = DisplayMetrics()
@@ -65,22 +55,22 @@ class CaptureService : Service() {
             width, height, density,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
             videoEncoder?.inputSurface,
-            null, android.os.Handler(Looper.getMainLooper())
+            null,
+            Handler(Looper.getMainLooper())
         )
 
         controlServer = ControlServer(8888)
         controlServer?.start()
 
-        // 瑙嗛閫氶亾鍦?VideoEncoder 鍐呴儴杩炴帴鍚庡惎鍔?        videoEncoder?.videoPort = 8889
+        videoEncoder?.videoPort = 8889
         videoEncoder?.host = "0.0.0.0"
-
-        println("[Capture] 鎶曞睆宸插惎鍔?${width}x${height}")
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val ch = NotificationChannel(
-                CHANNEL_ID, "鎶曞睆寮曟搸",
+                CHANNEL_ID,
+                "鎶曞睆寮曟搸",
                 NotificationManager.IMPORTANCE_LOW
             )
             (getSystemService(NotificationManager::class.java)).createNotificationChannel(ch)
@@ -90,7 +80,8 @@ class CaptureService : Service() {
     private fun buildNotification(): Notification {
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             Notification.Builder(this, CHANNEL_ID)
-        else Notification.Builder(this)
+        else
+            Notification.Builder(this)
         return builder
             .setContentTitle("鎶曞睆寮曟搸杩愯涓?)
             .setContentText("姝ｅ湪鎶曞睆鍒扮數鑴?)
