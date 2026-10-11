@@ -38,8 +38,7 @@ class CaptureService : Service() {
         startForeground(1, buildNotification())
 
         val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        // 需要从 Activity 传入的授权结果；这里用简化版：直接请求
-        val intent = Intent(this, MainActivity::class.java).apply {
+        // 闇€瑕佷粠 Activity 浼犲叆鐨勬巿鏉冪粨鏋滐紱杩欓噷鐢ㄧ畝鍖栫増锛氱洿鎺ヨ姹?        val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         startActivity(intent)
@@ -66,23 +65,22 @@ class CaptureService : Service() {
             width, height, density,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
             videoEncoder?.inputSurface,
-            null, Looper.getMainLooper()
+            null, android.os.Handler(Looper.getMainLooper())
         )
 
         controlServer = ControlServer(8888)
         controlServer?.start()
 
-        // 视频通道在 VideoEncoder 内部连接后启动
-        videoEncoder?.videoPort = 8889
+        // 瑙嗛閫氶亾鍦?VideoEncoder 鍐呴儴杩炴帴鍚庡惎鍔?        videoEncoder?.videoPort = 8889
         videoEncoder?.host = "0.0.0.0"
 
-        println("[Capture] 投屏已启动 ${width}x${height}")
+        println("[Capture] 鎶曞睆宸插惎鍔?${width}x${height}")
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val ch = NotificationChannel(
-                CHANNEL_ID, "投屏引擎",
+                CHANNEL_ID, "鎶曞睆寮曟搸",
                 NotificationManager.IMPORTANCE_LOW
             )
             (getSystemService(NotificationManager::class.java)).createNotificationChannel(ch)
@@ -94,8 +92,8 @@ class CaptureService : Service() {
             Notification.Builder(this, CHANNEL_ID)
         else Notification.Builder(this)
         return builder
-            .setContentTitle("投屏引擎运行中")
-            .setContentText("正在投屏到电脑")
+            .setContentTitle("鎶曞睆寮曟搸杩愯涓?)
+            .setContentText("姝ｅ湪鎶曞睆鍒扮數鑴?)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .build()
     }
