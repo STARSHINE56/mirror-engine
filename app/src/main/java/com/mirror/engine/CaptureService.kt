@@ -48,7 +48,8 @@ class CaptureService : Service() {
         if (resultCode != 0 && data != null) {
             startCapture(resultCode, data)
         }
-        return START_NOT_STICKY
+        // START_STICKY: service killed by system will be restarted
+        return START_STICKY
     }
 
     fun startCapture(code: Int, data: Intent) {
