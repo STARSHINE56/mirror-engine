@@ -1,10 +1,11 @@
 package com.mirror.engine
 
-import android.media.MediaCodec
-import android.media.MediaCodecInfo
-import android.media.MediaFormat
+import android.graphics.ImageFormat
+import android.graphics.Rect
+import android.media.Image
+import android.media.ImageReader
 import android.util.Log
-import android.view.Surface
+import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.net.ServerSocket
 import java.net.Socket
@@ -14,17 +15,16 @@ import java.util.concurrent.atomic.AtomicBoolean
 class VideoEncoder(
     private val width: Int,
     private val height: Int,
-    private val bitrate: Int,
-    private val fps: Int
+    private val jpegQuality: Int = 60,
+    private val fps: Int = 30
 ) {
-    private var codec: MediaCodec? = null
-    var inputSurface: Surface? = null
     var host: String = "0.0.0.0"
     var videoPort: Int = 8889
 
     private val running = AtomicBoolean(false)
     private var serverThread: Thread? = null
     private val frameQueue = java.util.concurrent.LinkedBlockingQueue<ByteArray>(3)
+    private var imageReader: ImageReader? = null
 
     companion object {
         private const val TAG = "VideoEncoder"
@@ -33,22 +33,28 @@ class VideoEncoder(
 
     fun start() {
         running.set(true)
-        val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
-            setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
-            setInteger(MediaFormat.KEY_FRAME_RATE, fps)
-            setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
-            setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
-            setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileHigh)
-            setInteger(MediaFormat.KEY_LEVEL, MediaCodecInfo.CodecProfileLevel.AVCLevel31)
+        // Create ImageReader to receive frames from VirtualDisplay
+        imageReader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 2).apply {
+            setOnImageAvailableListener({ reader ->
+                val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
+                try {
+                    val buffer = image.planes[0].buffer
+                    val data = ByteArray(buffer.remaining())
+                    buffer.get(data)
+                    while (frameQueue.size >= 2) frameQueue.poll()
+                    frameQueue.offer(data)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Image error: ${e.message}")
+                } finally {
+                    image.close()
+                }
+            }, null)
         }
-        codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
-        codec?.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-        inputSurface = codec?.createInputSurface()
-        codec?.start()
 
         serverThread = Thread({ acceptLoop() }, "VideoServer").apply { start() }
-        Thread({ encodeLoop() }, "VideoEncode").apply { start() }
     }
+
+    fun getInputSurface() = imageReader?.surface
 
     private fun acceptLoop() {
         try {
@@ -92,58 +98,9 @@ class VideoEncoder(
         out.flush()
     }
 
-    private fun encodeLoop() {
-        val bufferInfo = MediaCodec.BufferInfo()
-        val startCode = byteArrayOf(0x00, 0x00, 0x00, 0x01)
-        var configSent = false
-        while (running.get()) {
-            try {
-                val outIndex = codec?.dequeueOutputBuffer(bufferInfo, 10000) ?: -1
-                when (outIndex) {
-                    -2 -> { // INFO_OUTPUT_FORMAT_CHANGED
-                        val format = codec?.outputFormat
-                        val csd0 = format?.getByteBuffer("csd-0")
-                        val csd1 = format?.getByteBuffer("csd-1")
-                        if (csd0 != null && csd1 != null && !configSent) {
-                            // Send SPS/PPS first
-                            val sps = ByteArray(csd0.remaining()); csd0.get(sps)
-                            val pps = ByteArray(csd1.remaining()); csd1.get(pps)
-                            val configData = ByteArray(sps.size + pps.size)
-                            System.arraycopy(sps, 0, configData, 0, sps.size)
-                            System.arraycopy(pps, 0, configData, sps.size, pps.size)
-                            while (frameQueue.size >= 2) frameQueue.poll()
-                            frameQueue.offer(configData)
-                            configSent = true
-                            Log.i(TAG, "Sent SPS/PPS: ${sps.size} + ${pps.size}")
-                        }
-                    }
-                    -1 -> { // INFO_TRY_AGAIN_LATER
-                        continue
-                    }
-                    else -> {
-                        if (outIndex >= 0) {
-                            val buf = codec?.getOutputBuffer(outIndex) ?: continue
-                            val rawData = ByteArray(bufferInfo.size)
-                            buf.get(rawData)
-                            // Add Annex-B start code (00 00 00 01)
-                            val data = ByteArray(rawData.size + 4)
-                            System.arraycopy(startCode, 0, data, 0, 4)
-                            System.arraycopy(rawData, 0, data, 4, rawData.size)
-                            while (frameQueue.size >= 2) frameQueue.poll()
-                            frameQueue.offer(data)
-                            codec?.releaseOutputBuffer(outIndex, false)
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                break
-            }
-        }
-    }
-
     fun stop() {
         running.set(false)
-        try { codec?.stop(); codec?.release() } catch (_: Exception) {}
-        inputSurface?.release()
+        imageReader?.setOnImageAvailableListener(null, null)
+        imageReader?.close()
     }
 }
