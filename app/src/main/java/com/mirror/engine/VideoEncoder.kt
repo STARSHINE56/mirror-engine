@@ -95,21 +95,45 @@ class VideoEncoder(
     private fun encodeLoop() {
         val bufferInfo = MediaCodec.BufferInfo()
         val startCode = byteArrayOf(0x00, 0x00, 0x00, 0x01)
+        var configSent = false
         while (running.get()) {
             try {
                 val outIndex = codec?.dequeueOutputBuffer(bufferInfo, 10000) ?: -1
-                if (outIndex >= 0) {
-                    val buf = codec?.getOutputBuffer(outIndex) ?: continue
-                    val rawData = ByteArray(bufferInfo.size)
-                    buf.get(rawData)
-                    // Add Annex-B start code (00 00 00 01) before each NAL unit
-                    // MediaCodec output doesn't include start codes
-                    val data = ByteArray(rawData.size + 4)
-                    System.arraycopy(startCode, 0, data, 0, 4)
-                    System.arraycopy(rawData, 0, data, 4, rawData.size)
-                    while (frameQueue.size >= 2) frameQueue.poll()
-                    frameQueue.offer(data)
-                    codec?.releaseOutputBuffer(outIndex, false)
+                when (outIndex) {
+                    -2 -> { // INFO_OUTPUT_FORMAT_CHANGED
+                        val format = codec?.outputFormat
+                        val csd0 = format?.getByteBuffer("csd-0")
+                        val csd1 = format?.getByteBuffer("csd-1")
+                        if (csd0 != null && csd1 != null && !configSent) {
+                            // Send SPS/PPS first
+                            val sps = ByteArray(csd0.remaining()); csd0.get(sps)
+                            val pps = ByteArray(csd1.remaining()); csd1.get(pps)
+                            val configData = ByteArray(sps.size + pps.size)
+                            System.arraycopy(sps, 0, configData, 0, sps.size)
+                            System.arraycopy(pps, 0, configData, sps.size, pps.size)
+                            while (frameQueue.size >= 2) frameQueue.poll()
+                            frameQueue.offer(configData)
+                            configSent = true
+                            Log.i(TAG, "Sent SPS/PPS: ${sps.size} + ${pps.size}")
+                        }
+                    }
+                    -1 -> { // INFO_TRY_AGAIN_LATER
+                        continue
+                    }
+                    else -> {
+                        if (outIndex >= 0) {
+                            val buf = codec?.getOutputBuffer(outIndex) ?: continue
+                            val rawData = ByteArray(bufferInfo.size)
+                            buf.get(rawData)
+                            // Add Annex-B start code (00 00 00 01)
+                            val data = ByteArray(rawData.size + 4)
+                            System.arraycopy(startCode, 0, data, 0, 4)
+                            System.arraycopy(rawData, 0, data, 4, rawData.size)
+                            while (frameQueue.size >= 2) frameQueue.poll()
+                            frameQueue.offer(data)
+                            codec?.releaseOutputBuffer(outIndex, false)
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 break
