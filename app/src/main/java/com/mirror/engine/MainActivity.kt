@@ -21,6 +21,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     private lateinit var ipText: TextView
     private lateinit var startBtn: Button
+    private lateinit var keepAliveBtn: Button
     private var isRunning = false
 
     private val REQUEST_MEDIA_PROJECTION = 100
@@ -33,6 +34,7 @@ class MainActivity : AppCompatActivity() {
         statusText = findViewById(R.id.status_text)
         ipText = findViewById(R.id.ip_text)
         startBtn = findViewById(R.id.start_btn)
+        keepAliveBtn = findViewById(R.id.keepalive_btn)
 
         ipText.text = "IP: ${getLocalIp()}"
 
@@ -52,6 +54,33 @@ class MainActivity : AppCompatActivity() {
                 isRunning = false
                 startBtn.text = "Start"
                 statusText.text = "Stopped"
+            }
+        }
+
+        keepAliveBtn.setOnClickListener {
+            openKeepAliveSettings()
+        }
+    }
+
+    private fun openKeepAliveSettings() {
+        try {
+            // Try vivo/iQOO autostart settings first
+            val intent = Intent()
+            intent.setClassName(
+                "com.iqoo.secure",
+                "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity"
+            )
+            startActivity(intent)
+            Toast.makeText(this, "璇锋妸鏈簲鐢ㄥ姞鍏ョ櫧鍚嶅崟", Toast.LENGTH_LONG).show()
+        } catch (_: Exception) {
+            try {
+                // Fallback: open app details settings
+                val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                intent.data = android.net.Uri.parse("package:$packageName")
+                startActivity(intent)
+                Toast.makeText(this, "璇锋墜鍔ㄨ缃嚜鍚姩鍜岀數姹犵櫧鍚嶅崟", Toast.LENGTH_LONG).show()
+            } catch (_: Exception) {
+                Toast.makeText(this, "鏃犳硶鎵撳紑璁剧疆锛岃鎵嬪姩鍦ㄧ郴缁熻缃腑鎵?, Toast.LENGTH_LONG).show()
             }
         }
     }
