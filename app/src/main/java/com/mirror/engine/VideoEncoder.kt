@@ -25,6 +25,7 @@ class VideoEncoder(
     private val running = AtomicBoolean(false)
     private var serverThread: Thread? = null
     private val frameQueue = java.util.concurrent.LinkedBlockingQueue<ByteArray>(3)
+    private var spsPpsData: ByteArray? = null
 
     companion object {
         private const val TAG = "VideoEncoder"
@@ -74,6 +75,12 @@ class VideoEncoder(
         val info = ByteBuffer.allocate(4).putShort(width.toShort()).putShort(height.toShort()).array()
         sendPacket(out, 0x03, info)
 
+        // Send SPS/PPS first so decoder can initialize
+        spsPpsData?.let {
+            sendPacket(out, 0x02, it)
+            Log.i(TAG, "Sent SPS/PPS to new client: ${it.size} bytes")
+        }
+
         while (running.get() && !client.isClosed) {
             val frame = frameQueue.poll(1, java.util.concurrent.TimeUnit.SECONDS) ?: continue
             sendPacket(out, 0x01, frame)
@@ -104,16 +111,13 @@ class VideoEncoder(
                         val format = codec?.outputFormat
                         val csd0 = format?.getByteBuffer("csd-0")
                         val csd1 = format?.getByteBuffer("csd-1")
-                        if (csd0 != null && csd1 != null && !configSent) {
+                        if (csd0 != null && csd1 != null) {
                             val sps = ByteArray(csd0.remaining()); csd0.get(sps)
                             val pps = ByteArray(csd1.remaining()); csd1.get(pps)
-                            val configData = ByteArray(sps.size + pps.size)
-                            System.arraycopy(sps, 0, configData, 0, sps.size)
-                            System.arraycopy(pps, 0, configData, sps.size, pps.size)
-                            while (frameQueue.size >= 2) frameQueue.poll()
-                            frameQueue.offer(configData)
-                            configSent = true
-                            Log.i(TAG, "Sent SPS/PPS: ${sps.size} + ${pps.size}")
+                            spsPpsData = ByteArray(sps.size + pps.size)
+                            System.arraycopy(sps, 0, spsPpsData!!, 0, sps.size)
+                            System.arraycopy(pps, 0, spsPpsData!!, sps.size, pps.size)
+                            Log.i(TAG, "Saved SPS/PPS: ${sps.size} + ${pps.size}")
                         }
                     }
                     -1 -> { continue }
