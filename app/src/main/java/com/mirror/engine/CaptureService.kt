@@ -70,7 +70,7 @@ class CaptureService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val ch = NotificationChannel(
                 CHANNEL_ID,
-                "鎶曞睆寮曟搸",
+                "投屏引擎",
                 NotificationManager.IMPORTANCE_LOW
             )
             (getSystemService(NotificationManager::class.java)).createNotificationChannel(ch)
@@ -83,8 +83,8 @@ class CaptureService : Service() {
         else
             Notification.Builder(this)
         return builder
-            .setContentTitle("鎶曞睆寮曟搸杩愯涓?)
-            .setContentText("姝ｅ湪鎶曞睆鍒扮數鑴?)
+            .setContentTitle("Mirror Engine Running")
+            .setContentText("Casting to PC")
             .setSmallIcon(android.R.drawable.ic_media_play)
             .build()
     }
