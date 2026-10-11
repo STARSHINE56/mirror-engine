@@ -23,9 +23,15 @@ class ControlServer(private val port: Int) {
         try {
             val server = ServerSocket(port)
             Log.i(TAG, "Control waiting on $port")
-            val client = server.accept()
-            Log.i(TAG, "Control connected: ${client.inetAddress}")
-            handleClient(client)
+            while (running.get()) {
+                val client = server.accept()
+                Log.i(TAG, "Control connected: ${client.inetAddress}")
+                try {
+                    handleClient(client)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Control handler error: ${e.message}")
+                }
+            }
             server.close()
         } catch (e: Exception) {
             Log.e(TAG, "Control error: ${e.message}")
