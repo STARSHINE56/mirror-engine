@@ -71,16 +71,16 @@ class MainActivity : AppCompatActivity() {
                 "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity"
             )
             startActivity(intent)
-            Toast.makeText(this, "璇锋妸鏈簲鐢ㄥ姞鍏ョ櫧鍚嶅崟", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Please add this app to whitelist", Toast.LENGTH_LONG).show()
         } catch (_: Exception) {
             try {
                 // Fallback: open app details settings
                 val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 intent.data = android.net.Uri.parse("package:$packageName")
                 startActivity(intent)
-                Toast.makeText(this, "璇锋墜鍔ㄨ缃嚜鍚姩鍜岀數姹犵櫧鍚嶅崟", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Please enable autostart and battery whitelist", Toast.LENGTH_LONG).show()
             } catch (_: Exception) {
-                Toast.makeText(this, "鏃犳硶鎵撳紑璁剧疆锛岃鎵嬪姩鍦ㄧ郴缁熻缃腑鎵?, Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Cannot open settings, please find manually", Toast.LENGTH_LONG).show()
             }
         }
     }
