@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="投屏控制引擎"
+        android:text="鎶曞睆鎺у埗寮曟搸"
         android:textSize="28sp"
         android:layout_marginBottom="24dp" />
 
@@ -17,7 +17,7 @@
         android:id="@+id/status_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="状态: 未启动"
+        android:text="鐘舵€? 鏈惎鍔?
         android:textSize="16sp"
         android:layout_marginBottom="12dp" />
 
@@ -25,7 +25,7 @@
         android:id="@+id/ip_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="本机 IP: 未知"
+        android:text="鏈満 IP: 鏈煡"
         android:textSize="14sp"
         android:textColor="#666"
         android:layout_marginBottom="24dp" />
@@ -34,7 +34,15 @@
         android:id="@+id/start_btn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="开始投屏"
+        android:text="寮€濮嬫姇灞?
+        android:paddingHorizontal="32dp" />
+
+    <Button
+        android:id="@+id/keepalive_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="淇濇椿璁剧疆"
+        android:layout_marginTop="16dp"
         android:paddingHorizontal="32dp" />
 
 </LinearLayout>
