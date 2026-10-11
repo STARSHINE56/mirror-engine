@@ -11,9 +11,6 @@ import java.net.Socket
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 
-/**
- * H.264 硬件编码 + TCP 发送视频流
- */
 class VideoEncoder(
     private val width: Int,
     private val height: Int,
@@ -27,12 +24,11 @@ class VideoEncoder(
 
     private val running = AtomicBoolean(false)
     private var serverThread: Thread? = null
-    private var sendThread: Thread? = null
     private val frameQueue = java.util.concurrent.LinkedBlockingQueue<ByteArray>(3)
 
     companion object {
         private const val TAG = "VideoEncoder"
-        private const val FRAME_MAGIC = 0x4D495231  // "MIR1"
+        private const val FRAME_MAGIC = 0x4D495231
     }
 
     fun start() {
@@ -51,25 +47,24 @@ class VideoEncoder(
         codec?.start()
 
         serverThread = Thread({ acceptLoop() }, "VideoServer").apply { start() }
-        sendThread = Thread({ encodeLoop() }, "VideoEncode").apply { start() }
+        Thread({ encodeLoop() }, "VideoEncode").apply { start() }
     }
 
     private fun acceptLoop() {
         try {
             val server = ServerSocket(videoPort)
-            Log.i(TAG, "视频通道等待连接 0.0.0.0:$videoPort")
+            Log.i(TAG, "Video waiting on $videoPort")
             val client = server.accept()
-            Log.i(TAG, "视频通道已连接: ${client.inetAddress}")
+            Log.i(TAG, "Video connected: ${client.inetAddress}")
             sendLoop(client)
             server.close()
         } catch (e: Exception) {
-            Log.e(TAG, "视频服务异常: ${e.message}")
+            Log.e(TAG, "Video error: ${e.message}")
         }
     }
 
     private fun sendLoop(client: Socket) {
         val out = DataOutputStream(client.getOutputStream())
-        // 先发设备信息
         val info = ByteBuffer.allocate(4).putShort(width.toShort()).putShort(height.toShort()).array()
         sendPacket(out, 0x03, info)
 
@@ -81,7 +76,6 @@ class VideoEncoder(
     }
 
     private fun sendPacket(out: DataOutputStream, type: Int, data: ByteArray) {
-        // 包头: magic(4) + type(1) + length(3)
         val header = ByteBuffer.allocate(8)
             .putInt(FRAME_MAGIC)
             .put(type.toByte())
@@ -101,7 +95,6 @@ class VideoEncoder(
                     val buf = codec?.getOutputBuffer(outIndex) ?: continue
                     val data = ByteArray(bufferInfo.size)
                     buf.get(data)
-                    // 丢太旧的帧
                     while (frameQueue.size >= 2) frameQueue.poll()
                     frameQueue.offer(data)
                     codec?.releaseOutputBuffer(outIndex, false)
