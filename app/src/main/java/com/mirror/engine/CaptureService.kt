@@ -69,14 +69,14 @@ class CaptureService : Service() {
         val height = metrics.heightPixels
         val density = metrics.densityDpi
 
-        videoEncoder = VideoEncoder(width, height, 60, 30)
+        videoEncoder = VideoEncoder(width, height, 2000_000, 30)
         videoEncoder?.start()
 
         virtualDisplay = mediaProjection?.createVirtualDisplay(
             "MirrorCapture",
             width, height, density,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            videoEncoder?.getInputSurface(),
+            videoEncoder?.inputSurface,
             null,
             Handler(Looper.getMainLooper())
         )
