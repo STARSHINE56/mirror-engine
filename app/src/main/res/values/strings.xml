@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">投屏引擎</string>
+    <string name="accessibility_desc">允许投屏引擎接收电脑端的键鼠控制，注入触摸和按键事件</string>
+</resources>
